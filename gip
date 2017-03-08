@@ -1,0 +1,18 @@
+#!/bin/bash -eu
+
+test -z ${MYDNS_ID:-} || test -z ${MYDNS_PASSWORD:-} && {
+  printf 'Rquire environment variables `MYDNS_ID` and `MYDNS_PASSWORD`.\n'
+  exit 1;
+}
+
+readonly CACHE_FILE=/tmp/global-ip.cache
+
+newIpTempFile=$(mktemp ${CACHE_FILE}.XXXXXX)
+curl -s httpbin.org/ip  | grep origin | tr -d ' ' | tr -d '"' | cut -d ':' -f 2 > ${newIpTempFile}
+
+diff ${CACHE_FILE} ${newIpTempFile} 2> /dev/null 1>/dev/null || {
+  # Update cache file if difference between two files
+  cat ${newIpTempFile} > ${CACHE_FILE}
+  # Notify new gloabl IP address to the MyDNS
+  curl -s http://${MYDNS_ID}:${MYDNS_PASSWORD}@www.mydns.jp/login.html > /dev/null
+}
